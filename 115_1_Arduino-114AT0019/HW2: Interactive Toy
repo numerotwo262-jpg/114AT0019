@@ -1,0 +1,112 @@
+const int buttonPin = 2;       // pin untuk tombol
+const int RledPin = 9;         // the PWM pin the Red LED is attached to
+const int GledPin = 10;        // the PWM pin the Green LED is attached to
+const int BledPin = 11;        // the PWM pin the Blue LED is attached to
+
+int mood = 0;                  // the toy's mood state
+const int neutralMood = 10;    // the neutral mood state
+int buttonState = 0;           // Button Current State
+bool ButtonPressed = false;    // Has the button been pressed or not
+
+unsigned long touchedTimer = 0;    
+unsigned long reducedTimer = 0;    
+const long unTouchInterval = 5000; 
+const long reducedInterval = 1000;
+
+unsigned long lastPressTime = 0;
+int rapidPressCount = 0;         
+bool isAngry = false;            
+unsigned long angryTimer = 0;
+const long angryDuration = 3000; 
+unsigned long blinkTimer = 0;
+const long blinkInterval = 150;  
+bool isBlinkOn = false;
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(RledPin, OUTPUT);
+  pinMode(GledPin, OUTPUT);
+  pinMode(BledPin, OUTPUT);
+  mood = neutralMood;
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+  
+  buttonState = digitalRead(buttonPin);
+
+  if(buttonState == HIGH && !ButtonPressed){
+    ButtonPressed = true;
+
+    if (!isAngry) {
+      if (currentMillis - lastPressTime < 400) {
+        rapidPressCount++;
+      } else {
+        rapidPressCount = 1; 
+      }
+      lastPressTime = currentMillis;
+
+      if (rapidPressCount >= 10) {
+        isAngry = true;
+        angryTimer = currentMillis;
+        blinkTimer = currentMillis;
+        mood = 0; 
+      } else {
+        // Normal
+        mood = mood + 1;
+        if(mood > 20) mood = 20;
+        touchedTimer = currentMillis;
+      }
+    }
+  }
+  
+  if(buttonState == LOW && ButtonPressed){
+    ButtonPressed = false;
+  }
+
+  if (isAngry) {
+    if (currentMillis - angryTimer < angryDuration) {
+      if (currentMillis - blinkTimer >= blinkInterval) {
+        isBlinkOn = !isBlinkOn; 
+        blinkTimer = currentMillis;
+      }
+
+      if (isBlinkOn) {
+        analogWrite(RledPin, 255); 
+        analogWrite(GledPin, 0);
+        analogWrite(BledPin, 0);
+      } else {
+        analogWrite(RledPin, 0);   
+        analogWrite(GledPin, 0);
+        analogWrite(BledPin, 0);
+      }
+    } else {
+      isAngry = false;
+      rapidPressCount = 0;
+      touchedTimer = currentMillis; 
+    }
+  } else {
+    if(currentMillis - touchedTimer > unTouchInterval){
+      if(currentMillis - reducedTimer > reducedInterval){
+        mood = mood - 1;
+        if (mood < 0) mood = 0;
+        reducedTimer = currentMillis;
+      }
+    }
+    showLEDState(mood);
+  }
+}
+
+void showLEDState(int state){
+  float brightnessInterval = 255 / 10.0;
+  if(state >= neutralMood){
+    analogWrite(RledPin, 0);
+    analogWrite(GledPin, 255 - brightnessInterval * (state - neutralMood));
+    analogWrite(BledPin, brightnessInterval * (state - neutralMood));
+  }
+  else{
+    analogWrite(RledPin, brightnessInterval * (neutralMood - state));
+    analogWrite(GledPin, 255 - brightnessInterval * (neutralMood - state));
+    analogWrite(BledPin, 0);
+  }
+}
