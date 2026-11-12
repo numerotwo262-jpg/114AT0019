@@ -1,0 +1,52 @@
+const int buttonPin = 2; 
+const int ledPin = 3;    
+
+int buttonState = 0;
+int lastButtonState = 0;
+int currentState = 0;    
+
+unsigned long previousMillis = 0;
+int ledState = HIGH;
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  
+  digitalWrite(ledPin, HIGH); 
+}
+
+void loop() {
+  buttonState = digitalRead(buttonPin);
+
+  if (buttonState == HIGH && lastButtonState == LOW) {
+    currentState++; 
+    
+    if (currentState > 3) {
+      currentState = 0; 
+      digitalWrite(ledPin, HIGH); 
+    }
+    delay(50); 
+  }
+  lastButtonState = buttonState;
+
+  unsigned long currentMillis = millis();
+  long interval = 0;
+
+  if (currentState == 0) {
+    digitalWrite(ledPin, HIGH);
+  } else {
+    if (currentState == 1) {
+      interval = 1000; 
+    } else if (currentState == 2) {
+      interval = 300; 
+    } else if (currentState == 3) {
+      interval = 80;  
+    }
+
+    if (currentMillis - previousMillis >= interval) {
+      previousMillis = currentMillis;
+      ledState = (ledState == LOW) ? HIGH : LOW;
+      digitalWrite(ledPin, ledState);
+    }
+  }
+}
