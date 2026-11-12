@@ -1,0 +1,143 @@
+const int buttonPin = 2;
+const int RLedPin = 9;
+const int GLedPin = 10;
+const int BLedPin = 11;
+
+bool buttonPressed = false;
+unsigned long pressingTime = 0;
+const int longPressInterval = 1000; 
+unsigned long lastClickTime = 0;
+const int doubleClickDelay = 300; 
+
+int lightNum = 0;
+int currentMode = 0;
+bool secretMode = false;
+
+int RLightColor = 0;
+int GLightColor = 0;
+int BLightColor = 0;
+
+int RCurrentColor = 255;
+int GCurrentColor = 255;
+int BCurrentColor = 255;
+
+unsigned long effectTimer = 0;
+bool blinkOn = true;
+int fadeValue = 255;
+int fadeDir = -5;
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(RLedPin, OUTPUT);
+  pinMode(GLedPin, OUTPUT);
+  pinMode(BLedPin, OUTPUT);
+  
+  setTargetColor(); 
+}
+
+void loop() {
+  checkButton();
+  updateLED();
+  
+  analogWrite(RLedPin, RCurrentColor);
+  analogWrite(GLedPin, GCurrentColor);
+  analogWrite(BLedPin, BCurrentColor);
+  
+  delay(10);
+}
+
+void checkButton() {
+  int state = digitalRead(buttonPin);
+  unsigned long currentMillis = millis();
+
+  if (state == HIGH && !buttonPressed) {
+    buttonPressed = true;
+    pressingTime = currentMillis;
+  }
+
+  if (state == LOW && buttonPressed) {
+    buttonPressed = false;
+    unsigned long pressDuration = currentMillis - pressingTime;
+
+    if (pressDuration >= longPressInterval) {
+      secretMode = false;
+      currentMode++;
+      if (currentMode > 2) currentMode = 0;
+      
+    } else {
+      if (currentMillis - lastClickTime < doubleClickDelay) {
+        secretMode = true;
+      } else {
+        secretMode = false;
+        lightNum++;
+        if (lightNum > 4) lightNum = 0;
+        setTargetColor();
+      }
+      lastClickTime = currentMillis;
+    }
+  }
+}
+
+void setTargetColor() {
+  if (lightNum == 0)      { RLightColor = 0;   GLightColor = 0;   BLightColor = 0; }   // Putih
+  else if (lightNum == 1) { RLightColor = 0;   GLightColor = 255; BLightColor = 255; } // Merah
+  else if (lightNum == 2) { RLightColor = 255; GLightColor = 0;   BLightColor = 255; } // Hijau
+  else if (lightNum == 3) { RLightColor = 255; GLightColor = 255; BLightColor = 0; }   // Biru
+  else if (lightNum == 4) { RLightColor = 0;   GLightColor = 0;   BLightColor = 255; } // Kuning
+}
+
+void updateLED() {
+  unsigned long currentMillis = millis();
+
+  // 1. SECRET DISCO MODE 
+  if (secretMode) {
+    if (currentMillis - effectTimer > 80) { 
+      effectTimer = currentMillis;
+      RCurrentColor = random(0, 2) * 255;
+      GCurrentColor = random(0, 2) * 255;
+      BCurrentColor = random(0, 2) * 255;
+      if(RCurrentColor == 255 && GCurrentColor == 255 && BCurrentColor == 255) {
+         RCurrentColor = 0; 
+      }
+    }
+    return; 
+  }
+
+  // 2. CONSTANT LIGHT MODE
+  if (currentMode == 0) {
+    RCurrentColor = RLightColor;
+    GCurrentColor = GLightColor;
+    BCurrentColor = BLightColor;
+  }
+  
+  // 3. BLINK MODE
+  else if (currentMode == 1) {
+    if (currentMillis - effectTimer > 500) {
+      blinkOn = !blinkOn;
+      effectTimer = currentMillis;
+    }
+    if (blinkOn) {
+      RCurrentColor = RLightColor;
+      GCurrentColor = GLightColor;
+      BCurrentColor = BLightColor;
+    } else {
+      RCurrentColor = 255; 
+      GCurrentColor = 255; 
+      BCurrentColor = 255;
+    }
+  }
+  
+  // 4. BREATHING LIGHT MODE
+  else if (currentMode == 2) {
+    if (currentMillis - effectTimer > 15) {
+      effectTimer = currentMillis;
+      fadeValue += fadeDir;
+      if (fadeValue <= 0 || fadeValue >= 255) {
+        fadeDir = -fadeDir; // Putar balik arah transisi
+      }
+    }
+    RCurrentColor = (RLightColor == 0) ? fadeValue : 255;
+    GCurrentColor = (GLightColor == 0) ? fadeValue : 255;
+    BCurrentColor = (BLightColor == 0) ? fadeValue : 255;
+  }
+}
